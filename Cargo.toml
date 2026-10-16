@@ -1,0 +1,32 @@
+[package]
+name = "gpui-testing-library"
+version = "0.1.0"
+edition = "2024"
+description = "Testing Library for GPUI: query views the way users perceive them, simulate user events, and assert with jest-dom style matchers."
+license = "MIT"
+repository = "https://github.com/Ziinc/gpui-testing-library"
+readme = "README.md"
+keywords = ["gpui", "testing", "testing-library", "ui", "accessibility"]
+categories = ["gui", "development-tools::testing"]
+
+[features]
+default = ["regex"]
+# `TextMatch::regex` and `From<regex::Regex>` for text matchers.
+regex = ["dep:regex"]
+# Read gpui-kit's `.test_support()` observations and open windows through
+# `gpui_kit::open_window`, so Kit components are queryable without extra setup.
+gpui-kit = ["dep:gpui-kit"]
+
+[dependencies]
+# The gpui-pre snapshot gpui-kit 0.7.3 is built against. Window and element
+# types must come from the same crate as the application under test.
+gpui = { package = "gpui-pre", version = "=0.3.9", features = ["test-support"] }
+gpui-kit = { version = "=0.7.3", default-features = false, features = ["test-support"], optional = true }
+regex = { version = "1", optional = true }
+
+[dev-dependencies]
+gpui-kit = { version = "=0.7.3", features = ["test-support"] }
+
+[[test]]
+name = "kit"
+required-features = ["gpui-kit"]
