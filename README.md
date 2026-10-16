@@ -37,7 +37,7 @@ It depends on `gpui-pre = "=0.3.9"` with `test-support`, the snapshot
 `gpui-kit 0.7.3` uses. Your application must use the same GPUI crate, since
 windows and elements are shared types.
 
-On Linux, linking GPUI needs `libxkbcommon-dev` and `libxkbcommon-x11-dev`.
+On Linux, GPUI needs the packages in gpui-kit's `script/install-linux.sh` (see `.github/workflows/ci.yml`).
 
 ## Making elements visible to tests
 

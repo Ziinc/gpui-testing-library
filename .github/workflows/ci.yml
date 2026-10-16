@@ -14,7 +14,11 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
-      - run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev
+      # The same packages gpui-kit installs for its Linux CI.
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y
+          libfontconfig-dev libwayland-dev libxkbcommon-x11-dev libx11-xcb-dev
+          libssl-dev libzstd-dev libasound2-dev libvulkan1
       - run: cargo fmt --check
       - run: cargo clippy --all-features --all-targets -- --deny warnings
       - run: cargo test --all-features
