@@ -115,7 +115,14 @@ impl Screen {
     }
 
     pub(crate) fn snapshots_in(&self, container: Option<&Snapshot>) -> Vec<Snapshot> {
-        let mut snapshots = self.update(|window, _| collect(window));
+        // A closed window shows nothing, so removed nodes read as disconnected.
+        let mut cx = self.cx.clone();
+        let mut snapshots = cx
+            .update_window(self.window, |_, window, cx| {
+                draw(window, cx);
+                collect(window)
+            })
+            .unwrap_or_default();
         if let Some(container) = container {
             snapshots.retain(|snapshot| container.contains(snapshot));
         }
