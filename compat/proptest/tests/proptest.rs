@@ -54,7 +54,9 @@ impl Render for Counter {
 }
 
 fn config() -> Config {
-    Config::default().with_cases(32).with_persist_failures(false)
+    Config::default()
+        .with_cases(32)
+        .with_persist_failures(false)
 }
 
 fn fail(message: String) -> Result<(), Failure> {
@@ -87,20 +89,24 @@ fn queries_run_inside_invariants() {
 #[test]
 fn testable_and_target_observations_agree() {
     Harness::new(|_, cx| cx.new(|_| Counter::default()))
-        .invariant("same paths, bounds and visibility", |_, targets, window, _| {
-            let snapshots = observed(window);
-            for target in targets {
-                let Some(snapshot) = snapshots.iter().find(|s| s.path() == target.path()) else {
-                    return fail(format!("{target:?} is not observed by testing-library"));
-                };
-                if snapshot.bounds() != target.bounds()
-                    || snapshot.is_visible() != target.is_visible()
-                {
-                    return fail(format!("{target:?} disagrees with {snapshot:?}"));
+        .invariant(
+            "same paths, bounds and visibility",
+            |_, targets, window, _| {
+                let snapshots = observed(window);
+                for target in targets {
+                    let Some(snapshot) = snapshots.iter().find(|s| s.path() == target.path())
+                    else {
+                        return fail(format!("{target:?} is not observed by testing-library"));
+                    };
+                    if snapshot.bounds() != target.bounds()
+                        || snapshot.is_visible() != target.is_visible()
+                    {
+                        return fail(format!("{target:?} disagrees with {snapshot:?}"));
+                    }
                 }
-            }
-            Ok(())
-        })
+                Ok(())
+            },
+        )
         .check(config());
 }
 

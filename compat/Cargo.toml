@@ -17,3 +17,7 @@ gpui-testing-library = { path = "..", features = ["gpui-kit"] }
 # GPUI is slow unoptimized; this only affects these tests.
 [profile.dev.package."*"]
 opt-level = 2
+
+# Tauri and two renderers make this a large build; skip debug info.
+[profile.dev]
+debug = 0

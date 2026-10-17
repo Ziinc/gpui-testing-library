@@ -26,7 +26,7 @@ impl Render for Status {
                 div()
                     .id("toggle")
                     .role(Role::Switch)
-                    .aria_label("Online")
+                    .aria_label("Connected")
                     .aria_toggled(self.online.into())
                     .testable()
                     .h(px(30.))
@@ -41,7 +41,7 @@ impl Render for Status {
 #[tauri_plugin_gpui::gpui::test]
 fn plain_views_render_without_tauri(cx: &mut TestAppContext) {
     let screen = render(cx, |_, _| Status::default());
-    let toggle = screen.get_by_role(by::role(Role::Switch).name("Online"));
+    let toggle = screen.get_by_role(by::role(Role::Switch).name("Connected"));
     screen.user().click(&toggle);
     expect(&toggle).to_be_checked();
     expect(screen.get_by_text("Online")).to_be_visible();
@@ -88,6 +88,8 @@ fn kit_views_render_inside_root(cx: &mut TestAppContext) {
     let sync = screen.get_by_role(by::role(Role::CheckBox).name("Sync"));
     screen.user().click(&sync);
     expect(&sync).to_be_checked();
-    screen.user().click(&screen.get_by_role(by::role(Role::Button).name("Save")));
+    screen
+        .user()
+        .click(&screen.get_by_role(by::role(Role::Button).name("Save")));
     assert!(screen.read(|settings, _| settings.saved));
 }
