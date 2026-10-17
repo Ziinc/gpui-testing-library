@@ -602,6 +602,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "baguette_view"
+version = "0.1.0"
+source = "git+https://github.com/Ziinc/baguette?rev=174fce2#174fce2515fe246688749d9c4ec56557a354fc5c"
+dependencies = [
+ "gpui-base",
+ "gpui-pre",
+ "log",
+ "serde",
+]
+
+[[package]]
 name = "base62"
 version = "2.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1185,6 +1196,17 @@ checksum = "4356eba6976435498d05a311ee9fc486da3bc81c200d3f0d7dd9703b41913f92"
 dependencies = [
  "bytes",
  "memchr",
+]
+
+[[package]]
+name = "compat-baguette"
+version = "0.0.0"
+dependencies = [
+ "baguette_view",
+ "gpui-kit",
+ "gpui-pre",
+ "gpui-testing-library",
+ "serde_json",
 ]
 
 [[package]]

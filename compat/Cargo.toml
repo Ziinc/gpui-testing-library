@@ -3,7 +3,7 @@
 # Each crate pins the sibling revision it was verified with.
 [workspace]
 resolver = "3"
-members = ["proptest", "visual-test", "tauri-gpui"]
+members = ["proptest", "visual-test", "tauri-gpui", "baguette"]
 
 [workspace.package]
 edition = "2024"
