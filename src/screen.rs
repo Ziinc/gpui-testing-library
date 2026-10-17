@@ -2,12 +2,64 @@
 use crate::{
     node::{Node, Snapshot},
     observe,
-    query::Queries,
+    query::{Queries, Query},
 };
 use gpui::{
-    AnyWindowHandle, App, AppContext as _, Context, Entity, Pixels, Render, Size, TestAppContext,
-    Window,
+    AnyWindowHandle, App, AppCell, AppContext as _, BackgroundExecutor, Context, Entity,
+    HeadlessAppContext, Pixels, Render, Size, TestAppContext, Window,
 };
+use std::rc::Rc;
+
+/// The GPUI app a [`Screen`] drives: a `TestAppContext`, or a
+/// `HeadlessAppContext` such as the one gpui-visual-test captures from.
+#[derive(Clone)]
+enum Host {
+    Test(TestAppContext),
+    Headless {
+        app: Rc<AppCell>,
+        executor: BackgroundExecutor,
+    },
+}
+
+impl Host {
+    fn update_window<R>(
+        &self,
+        window: AnyWindowHandle,
+        update: impl FnOnce(&mut Window, &mut App) -> R,
+    ) -> Option<R> {
+        match self {
+            Host::Test(cx) => cx
+                .clone()
+                .update_window(window, |_, window, cx| update(window, cx))
+                .ok(),
+            Host::Headless { app, .. } => app
+                .borrow_mut()
+                .update_window(window, |_, window, cx| update(window, cx))
+                .ok(),
+        }
+    }
+
+    fn update<R>(&self, update: impl FnOnce(&mut App) -> R) -> R {
+        match self {
+            Host::Test(cx) => cx.update(update),
+            Host::Headless { app, .. } => update(&mut app.borrow_mut()),
+        }
+    }
+
+    fn read<R>(&self, read: impl FnOnce(&App) -> R) -> R {
+        match self {
+            Host::Test(cx) => cx.read(read),
+            Host::Headless { app, .. } => read(&app.borrow()),
+        }
+    }
+
+    fn executor(&self) -> BackgroundExecutor {
+        match self {
+            Host::Test(cx) => cx.executor(),
+            Host::Headless { executor, .. } => executor.clone(),
+        }
+    }
+}
 
 /// Queries and interactions for one window, Testing Library's `screen`.
 ///
@@ -16,7 +68,7 @@ use gpui::{
 /// already borrows the window.
 #[derive(Clone)]
 pub struct Screen {
-    cx: TestAppContext,
+    host: Host,
     window: AnyWindowHandle,
 }
 
@@ -25,7 +77,24 @@ impl Screen {
     /// `gpui_kit::open_window` or `cx.add_window`.
     pub fn new(cx: &TestAppContext, window: impl Into<AnyWindowHandle>) -> Self {
         Self {
-            cx: cx.clone(),
+            host: Host::Test(cx.clone()),
+            window: window.into(),
+        }
+    }
+
+    /// A screen for a window of a `HeadlessAppContext`, the app
+    /// gpui-visual-test renders real pixels with, so one test can interact
+    /// through the screen and then capture the same window.
+    ///
+    /// Everything works as on a `TestAppContext` except
+    /// [`UserEvent::upload`](crate::UserEvent::upload), which needs the test
+    /// platform's file prompts, and [`Self::cx`].
+    pub fn headless(cx: &HeadlessAppContext, window: impl Into<AnyWindowHandle>) -> Self {
+        Self {
+            host: Host::Headless {
+                app: cx.app.clone(),
+                executor: cx.background_executor().clone(),
+            },
             window: window.into(),
         }
     }
@@ -35,27 +104,63 @@ impl Screen {
     }
 
     /// The test context this screen drives.
+    ///
+    /// Panics for a [`Self::headless`] screen; use [`Self::update_app`] and
+    /// [`Self::read_app`], which work for both.
+    #[track_caller]
     pub fn cx(&self) -> TestAppContext {
-        self.cx.clone()
+        match &self.host {
+            Host::Test(cx) => cx.clone(),
+            Host::Headless { .. } => {
+                panic!("this screen drives a HeadlessAppContext, not a TestAppContext")
+            }
+        }
+    }
+
+    pub(crate) fn test_cx(&self) -> Option<TestAppContext> {
+        match &self.host {
+            Host::Test(cx) => Some(cx.clone()),
+            Host::Headless { .. } => None,
+        }
+    }
+
+    /// Updates the app, for either kind of context.
+    pub fn update_app<R>(&self, update: impl FnOnce(&mut App) -> R) -> R {
+        self.host.update(update)
+    }
+
+    /// Reads the app, for either kind of context.
+    pub fn read_app<R>(&self, read: impl FnOnce(&App) -> R) -> R {
+        self.host.read(read)
+    }
+
+    /// GPUI's executor for this app, whose clock tests control.
+    pub fn executor(&self) -> BackgroundExecutor {
+        self.host.executor()
+    }
+
+    /// Runs spawned work until nothing more can make progress.
+    pub fn run_until_parked(&self) {
+        self.host.executor().run_until_parked();
     }
 
     /// Runs `update` with the window, then completes a frame.
     #[track_caller]
     pub fn update<R>(&self, update: impl FnOnce(&mut Window, &mut App) -> R) -> R {
-        let mut cx = self.cx.clone();
-        cx.update_window(self.window, |_, window, cx| {
-            let result = update(window, cx);
-            draw(window, cx);
-            result
-        })
-        .expect("the test window was closed")
+        self.host
+            .update_window(self.window, |window, cx| {
+                let result = update(window, cx);
+                draw(window, cx);
+                result
+            })
+            .expect("the test window was closed")
     }
 
     /// Like Testing Library's `act`: runs `update`, lets spawned work finish,
     /// then completes a frame.
     pub fn act<R>(&self, update: impl FnOnce(&mut Window, &mut App) -> R) -> R {
         let result = self.update(update);
-        self.cx.run_until_parked();
+        self.run_until_parked();
         self.redraw();
         result
     }
@@ -67,9 +172,10 @@ impl Screen {
 
     /// Closes the window, like `unmount`.
     pub fn unmount(&self) {
-        let mut cx = self.cx.clone();
-        let _ = cx.update_window(self.window, |_, window, _| window.remove_window());
-        self.cx.run_until_parked();
+        let _ = self
+            .host
+            .update_window(self.window, |window, _| window.remove_window());
+        self.run_until_parked();
     }
 
     /// Restricts queries to the descendants of `node`.
@@ -116,9 +222,9 @@ impl Screen {
 
     pub(crate) fn snapshots_in(&self, container: Option<&Snapshot>) -> Vec<Snapshot> {
         // A closed window shows nothing, so removed nodes read as disconnected.
-        let mut cx = self.cx.clone();
-        let mut snapshots = cx
-            .update_window(self.window, |_, window, cx| {
+        let mut snapshots = self
+            .host
+            .update_window(self.window, |window, cx| {
                 draw(window, cx);
                 collect(window)
             })
@@ -135,10 +241,16 @@ impl Screen {
             .find(|snapshot| snapshot.path() == path)
     }
 
+    /// Runs `f` with the window, or returns `None` once it is closed.
+    pub(crate) fn try_with_window<R>(
+        &self,
+        f: impl FnOnce(&mut Window, &mut App) -> R,
+    ) -> Option<R> {
+        self.host.update_window(self.window, f)
+    }
+
     pub(crate) fn with_window<R>(&self, f: impl FnOnce(&mut Window, &mut App) -> R) -> R {
-        let mut cx = self.cx.clone();
-        cx.update_window(self.window, |_, window, cx| f(window, cx))
-            .expect("the test window was closed")
+        self.try_with_window(f).expect("the test window was closed")
     }
 }
 
@@ -154,6 +266,26 @@ impl Queries for Screen {
 pub(crate) fn draw(window: &mut Window, cx: &mut App) {
     window.refresh();
     window.draw(cx).clear(cx);
+}
+
+/// Observed elements from the window's last completed frame, in reading
+/// order, for code that already holds the window and so cannot use a
+/// [`Screen`], such as a gpui-proptest invariant or a GPUI listener.
+///
+/// It does not draw: call it after a frame, not while one is being built.
+pub fn observed(window: &Window) -> Vec<Snapshot> {
+    collect(window)
+}
+
+/// The [`observed`] elements matching `query`, with the visibility rule of
+/// [`Queries::query_all`]: role queries skip hidden elements unless asked.
+pub fn observed_matching(window: &Window, query: impl Query) -> Vec<Snapshot> {
+    collect(window)
+        .into_iter()
+        .filter(|snapshot| {
+            (query.includes_hidden() || snapshot.is_visible()) && query.matches(snapshot)
+        })
+        .collect()
 }
 
 /// Observed elements from the last frame, in reading order: top to bottom,
@@ -248,7 +380,7 @@ impl<V: 'static> RenderResult<V> {
     }
     /// Reads the view's state.
     pub fn read<R>(&self, read: impl FnOnce(&V, &App) -> R) -> R {
-        self.screen.cx.read(|cx| read(self.view.read(cx), cx))
+        self.screen.read_app(|cx| read(self.view.read(cx), cx))
     }
     /// Updates the view, then completes a frame, like `rerender`.
     pub fn rerender<R>(&self, update: impl FnOnce(&mut V, &mut Window, &mut Context<V>) -> R) -> R {

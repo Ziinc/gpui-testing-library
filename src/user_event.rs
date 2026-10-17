@@ -12,7 +12,7 @@ use crate::{
     query::{Queries, by},
     screen::Screen,
 };
-use gpui::{AppContext as _, ClipboardItem, Modifiers, MouseButton, Pixels, Point, Role, px};
+use gpui::{ClipboardItem, Modifiers, MouseButton, Pixels, Point, Role, px};
 use std::{cell::RefCell, path::PathBuf, time::Duration};
 
 /// Options for [`UserEvent::with_options`], like `userEvent.setup(options)`.
@@ -75,8 +75,7 @@ impl UserEvent {
         // Start from the window's modifiers, so keys another `UserEvent` left
         // held keep applying to typed characters as they do to clicks.
         let modifiers = screen
-            .cx()
-            .update_window(screen.window(), |_, window, _| window.modifiers())
+            .try_with_window(|window, _| window.modifiers())
             .unwrap_or_default();
         Self {
             screen,
@@ -93,11 +92,10 @@ impl UserEvent {
     }
 
     fn settle(&self) {
-        let cx = self.screen.cx();
         if let Some(delay) = self.options.delay {
-            cx.executor().advance_clock(delay);
+            self.screen.executor().advance_clock(delay);
         }
-        cx.run_until_parked();
+        self.screen.run_until_parked();
         self.screen.redraw();
     }
 
@@ -352,8 +350,7 @@ impl UserEvent {
     pub fn copy(&self) -> Option<String> {
         self.shortcut("c");
         self.screen
-            .cx()
-            .read_from_clipboard()
+            .read_app(|cx| cx.read_from_clipboard())
             .and_then(|item| item.text())
     }
 
@@ -361,16 +358,14 @@ impl UserEvent {
     pub fn cut(&self) -> Option<String> {
         self.shortcut("x");
         self.screen
-            .cx()
-            .read_from_clipboard()
+            .read_app(|cx| cx.read_from_clipboard())
             .and_then(|item| item.text())
     }
 
     /// Writes `text` to the clipboard and pastes it into the focused element.
     pub fn paste(&self, text: &str) {
         self.screen
-            .cx()
-            .write_to_clipboard(ClipboardItem::new_string(text.to_owned()));
+            .update_app(|cx| cx.write_to_clipboard(ClipboardItem::new_string(text.to_owned())));
         self.shortcut("v");
     }
 
@@ -429,8 +424,10 @@ impl UserEvent {
     #[track_caller]
     pub fn upload(&self, node: &Node, paths: impl IntoIterator<Item = impl Into<PathBuf>>) {
         let paths: Vec<PathBuf> = paths.into_iter().map(Into::into).collect();
+        let cx = self.screen.test_cx().expect(
+            "upload() answers the test platform's file prompt, so it needs a TestAppContext",
+        );
         self.click(node);
-        let cx = self.screen.cx();
         assert!(
             cx.did_prompt_for_paths(),
             "clicking {:?} did not open a file prompt",

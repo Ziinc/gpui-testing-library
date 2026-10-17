@@ -1,0 +1,19 @@
+# Tests against the crates gpui-testing-library is used alongside. A separate
+# workspace, so the library's own build never compiles Tauri or a renderer.
+# Each crate pins the sibling revision it was verified with.
+[workspace]
+resolver = "3"
+members = ["proptest", "visual-test", "tauri-gpui"]
+
+[workspace.package]
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+gpui = { package = "gpui-pre", version = "=0.3.9", features = ["test-support"] }
+gpui-kit = { version = "=0.7.3", features = ["test-support"] }
+gpui-testing-library = { path = "..", features = ["gpui-kit"] }
+
+# GPUI is slow unoptimized; this only affects these tests.
+[profile.dev.package."*"]
+opt-level = 2
