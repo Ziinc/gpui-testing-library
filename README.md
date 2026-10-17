@@ -139,8 +139,8 @@ Test the view you pass to `attach_gpui` or `attach_gpui_view`. Tauri, wgpu
 and the webview are never started. Plain views use `render`; views shown
 with `attach_gpui_view` sit inside gpui-base's Root, which `kit::render`
 reproduces. Views that call `webview_frame` or `with_app` need the Tauri
-runtime, so give them a seam in tests. tauri-gpui moves to gpui-pre 0.3.9 in
-Ziinc/tauri-gpui#36; until that merges, depend on that branch.
+runtime, so give them a seam in tests. tauri-gpui uses gpui-pre 0.3.9 from
+its `main` branch onward.
 
 ### baguette
 
