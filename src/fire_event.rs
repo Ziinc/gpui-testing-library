@@ -25,7 +25,9 @@ pub(crate) fn center(node: &Node) -> Point<Pixels> {
         snapshot.is_visible(),
         "cannot interact with {snapshot:?}: it is not visible"
     );
-    snapshot.bounds().center()
+    // The center of what is painted, so a partly scrolled-out element is
+    // hit where the user can see it.
+    snapshot.visible_bounds().center()
 }
 
 impl FireEvent {

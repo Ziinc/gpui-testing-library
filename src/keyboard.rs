@@ -49,19 +49,26 @@ pub(crate) fn parse(text: &str) -> Vec<KeyAction> {
 
 fn descriptor_action(descriptor: &str, text: &str) -> KeyAction {
     assert!(!descriptor.is_empty(), "empty key descriptor in {text:?}");
+    let key_name = |key: &str| {
+        assert!(
+            !key.is_empty(),
+            "missing key name in {{{descriptor}}} of {text:?}"
+        );
+        key.to_owned()
+    };
     if let Some(key) = descriptor.strip_prefix('/') {
-        return KeyAction::Release(key.to_owned());
+        return KeyAction::Release(key_name(key));
     }
     if let Some((key, rest)) = descriptor.split_once('>') {
         let rest = rest.trim_end_matches('/');
         if rest.is_empty() {
-            return KeyAction::Hold(key.to_owned());
+            return KeyAction::Hold(key_name(key));
         }
         let repeat = rest
             .parse()
             .unwrap_or_else(|_| panic!("invalid repeat count in {{{descriptor}}} of {text:?}"));
         return KeyAction::Press {
-            key: key.to_owned(),
+            key: key_name(key),
             repeat,
         };
     }
@@ -159,5 +166,53 @@ mod tests {
     #[should_panic(expected = "unterminated")]
     fn rejects_unterminated_descriptors() {
         parse("{Enter");
+    }
+
+    #[test]
+    #[should_panic(expected = "missing key name")]
+    fn rejects_descriptors_without_a_key() {
+        parse("{>2}");
+    }
+
+    proptest::proptest! {
+        /// Escaping `{` and `[` types any text literally.
+        #[test]
+        fn escaped_text_types_literally(text in "\\PC*") {
+            let escaped = text.replace('{', "{{").replace('[', "[[");
+            let typed: Vec<_> = text.chars().map(Type).collect();
+            proptest::prop_assert_eq!(parse(&escaped), typed);
+        }
+
+        /// Arbitrary input either parses or fails with one of the parser's
+        /// own messages, never an unrelated panic.
+        #[test]
+        fn arbitrary_input_fails_only_with_parser_errors(text in "[{}\\[\\]/>a-zA-Z0-9 ]{0,12}") {
+            let result = std::panic::catch_unwind(|| parse(&text));
+            if let Err(payload) = result {
+                let message = payload
+                    .downcast_ref::<String>()
+                    .cloned()
+                    .or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string()))
+                    .unwrap_or_default();
+                proptest::prop_assert!(
+                    ["unterminated", "empty key descriptor", "missing key name", "invalid repeat"]
+                        .iter()
+                        .any(|expected| message.contains(expected)),
+                    "{message}"
+                );
+            }
+        }
+
+        /// Every parsed hold names a key, so releases can match it.
+        #[test]
+        fn parsed_actions_always_name_a_key(text in "[{}\\[\\]/>a-z0-9]{0,12}") {
+            if let Ok(actions) = std::panic::catch_unwind(|| parse(&text)) {
+                for action in actions {
+                    if let Press { key, .. } | Hold(key) | Release(key) = action {
+                        proptest::prop_assert!(!key.is_empty());
+                    }
+                }
+            }
+        }
     }
 }
