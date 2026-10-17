@@ -97,7 +97,8 @@ pub use query::{
     ByText, ByTitle, Queries, Query, by,
 };
 pub use screen::{
-    RenderOptions, RenderResult, Screen, Within, act, cleanup, render, render_with, within,
+    RenderOptions, RenderResult, Screen, Within, act, cleanup, observed, observed_matching, render,
+    render_with, within,
 };
 pub use text_match::{TextMatch, normalize};
 pub use user_event::{PointerAction, TypeOptions, UserEvent, UserEventOptions};

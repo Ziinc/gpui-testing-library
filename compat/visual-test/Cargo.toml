@@ -1,0 +1,10 @@
+[package]
+name = "compat-visual-test"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+
+[dev-dependencies]
+gpui.workspace = true
+gpui-testing-library.workspace = true
+gpui-visual-test = { git = "https://github.com/Ziinc/gpui-visual-test", rev = "bb85579", features = ["capture"] }

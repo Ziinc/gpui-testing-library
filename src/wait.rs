@@ -62,10 +62,10 @@ pub(crate) async fn poll<T>(
     let config = config::get();
     let timeout = options.timeout.unwrap_or(config.async_util_timeout());
     let interval = options.interval.unwrap_or(config.async_util_interval());
-    let executor = screen.cx().executor();
+    let executor = screen.executor();
     let mut elapsed = Duration::ZERO;
     loop {
-        screen.cx().run_until_parked();
+        screen.run_until_parked();
         if let Some(value) = check()? {
             return Ok(Some(value));
         }

@@ -87,6 +87,68 @@ fn checks_the_box(cx: &mut TestAppContext) {
 with `Screen::new(cx, window)`, and gpui-kit's own `TestWindowExt` helpers
 (`window.click("agree", cx)`) keep working on the same window.
 
+## With other GPUI testing crates
+
+Everything below shares one GPUI crate, `gpui-pre =0.3.9`. `compat/` is a
+separate workspace with a test crate for each, run by CI's `compat` job.
+
+### gpui-proptest
+
+Mark an element for both by calling `.testable()` before
+`.proptest_target()`. Invariants hold the window, so they read observations
+with `observed(window)` and `observed_matching(window, query)` instead of a
+`Screen`:
+
+```rust
+Harness::new(|_, cx| cx.new(|_| Counter::default()))
+    .invariant("the label shows the count", |counter, _, window, cx| {
+        let expected = format!("Count {}", counter.read(cx).count);
+        let label = observed_matching(window, by::text(TextMatch::regex("^Count")));
+        ensure_eq!(label[0].text(), Some(expected.as_str()));
+        Ok(())
+    })
+    .check(Config::default());
+```
+
+With gpui-proptest's `kit` feature and this crate's `gpui-kit` feature, Kit
+components are both targets and queryable. A short `TargetSource` turns
+`.testable()` elements into generated-click targets without
+`.proptest_target()`; see `compat/proptest/tests/proptest.rs`.
+
+### gpui-visual-test
+
+gpui-visual-test renders on a `HeadlessAppContext`. `Screen::headless`
+drives a window of that app, so a test can interact and then capture the
+same window. Node bounds map onto shot regions:
+
+```rust
+let mut cx = capture::headless_app(None)?;
+let handle = cx.update(|cx| cx.open_window(capture::window_options(300., 200.), build))?;
+let screen = Screen::headless(&cx, handle);
+screen.user().click(&screen.get_by_role(by::role(Role::Button).name("Save")));
+let shot = capture::capture_window(&mut cx, handle.into(), "saved")?;
+```
+
+On a headless screen, use `update_app`, `read_app`, `executor` and
+`run_until_parked` in place of `cx()`. `user.upload` needs the test
+platform's file prompts, so it requires a `TestAppContext`.
+
+### tauri-gpui
+
+Test the view you pass to `attach_gpui` or `attach_gpui_view`. Tauri, wgpu
+and the webview are never started. Plain views use `render`; views shown
+with `attach_gpui_view` sit inside gpui-base's Root, which `kit::render`
+reproduces. Views that call `webview_frame` or `with_app` need the Tauri
+runtime, so give them a seam in tests. tauri-gpui moves to gpui-pre 0.3.9 in
+Ziinc/tauri-gpui#36; until that merges, depend on that branch.
+
+### baguette
+
+Baguette renders Elixir trees with gpui-base's `.test_support()` when built
+with its `playwright` feature, and this crate reads those with its `gpui-kit`
+feature. Rendering a tree from a test also needs baguette to export its
+renderer, which is in progress in the baguette repository.
+
 ## API
 
 | Testing Library | gpui-testing-library |
@@ -177,4 +239,5 @@ cargo test --all-features
 PROPTEST_CASES=500 cargo test --all-features --test chaos  # longer chaos run
 cargo clippy --all-features --all-targets -- --deny warnings
 cargo fmt --check
+cd compat && cargo test   # against gpui-proptest, gpui-visual-test, tauri-gpui
 ```

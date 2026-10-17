@@ -136,7 +136,7 @@ impl FireEvent {
     pub fn action(&self, action: &dyn Action) {
         self.screen
             .update(|window, cx| window.dispatch_action(action.boxed_clone(), cx));
-        self.screen.cx().run_until_parked();
+        self.screen.run_until_parked();
         self.screen.redraw();
     }
     /// Dispatches any platform input.
