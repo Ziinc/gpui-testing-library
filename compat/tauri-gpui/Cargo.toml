@@ -7,6 +7,5 @@ publish.workspace = true
 [dev-dependencies]
 gpui-kit.workspace = true
 gpui-testing-library.workspace = true
-# The branch of Ziinc/tauri-gpui#36, which moves tauri-gpui to gpui-pre
-# 0.3.9; tauri-gpui's main still pins 0.3.8. Switch to main once it merges.
-tauri-plugin-gpui = { git = "https://github.com/Ziinc/tauri-gpui", rev = "d7d1929" }
+# tauri-gpui main, the first commit on gpui-pre 0.3.9.
+tauri-plugin-gpui = { git = "https://github.com/Ziinc/tauri-gpui", rev = "f9cf76b" }
