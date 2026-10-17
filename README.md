@@ -153,12 +153,28 @@ These follow from GPUI, not from missing work:
 - **Interactions are synchronous.** `user` methods do not need `.await`; GPUI
   dispatch is synchronous. Set `UserEventOptions::with_delay` to advance the
   test clock between steps.
-- `TextMatch::contains` ignores case, like `{ exact: false }`.
+- `TextMatch::contains` ignores case, like `{ exact: false }`. It lowercases
+  rather than case-folds, as JavaScript's `toLowerCase` does, so `"STRASSE"`
+  does not match `"Straße"`.
+- **Ids must be unique among siblings.** GPUI keys element state by id path,
+  so siblings sharing an id are observed once, as the last one. `text!(..)`
+  called in a loop reuses one call-site id; use `text!(id = .., ..)`.
+- **Nodes are identified by id path.** Moving an element under a parent with
+  a different id makes it a new node, and the old node reconnects if that
+  path renders again. A moved DOM element stays the same node.
+- **Opacity is detected on the element only.** An ancestor's zero opacity
+  does not make descendants invisible, because GPUI keeps inherited opacity
+  private.
+- **Pointer events go to a position.** Interactions hit the center of the
+  element's visible (unclipped) area through GPUI's hit testing, so an element
+  painted on top receives the event too, and GPUI delivers mouse events to
+  every hitbox under the pointer unless one stops propagation.
 
 ## Development
 
 ```sh
 cargo test --all-features
+PROPTEST_CASES=500 cargo test --all-features --test chaos  # longer chaos run
 cargo clippy --all-features --all-targets -- --deny warnings
 cargo fmt --check
 ```

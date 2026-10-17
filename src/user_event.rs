@@ -12,7 +12,7 @@ use crate::{
     query::{Queries, by},
     screen::Screen,
 };
-use gpui::{ClipboardItem, Modifiers, MouseButton, Pixels, Point, Role, px};
+use gpui::{AppContext as _, ClipboardItem, Modifiers, MouseButton, Pixels, Point, Role, px};
 use std::{cell::RefCell, path::PathBuf, time::Duration};
 
 /// Options for [`UserEvent::with_options`], like `userEvent.setup(options)`.
@@ -72,10 +72,19 @@ impl UserEvent {
 
     /// `userEvent.setup(options)`.
     pub fn with_options(screen: Screen, options: UserEventOptions) -> Self {
+        // Start from the window's modifiers, so keys another `UserEvent` left
+        // held keep applying to typed characters as they do to clicks.
+        let modifiers = screen
+            .cx()
+            .update_window(screen.window(), |_, window, _| window.modifiers())
+            .unwrap_or_default();
         Self {
             screen,
             options,
-            state: RefCell::default(),
+            state: RefCell::new(KeyboardState {
+                modifiers,
+                ..KeyboardState::default()
+            }),
         }
     }
 

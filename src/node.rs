@@ -36,6 +36,7 @@ pub struct Snapshot {
     pub(crate) min_numeric_value: Option<f64>,
     pub(crate) max_numeric_value: Option<f64>,
     pub(crate) bounds: Bounds<Pixels>,
+    pub(crate) visible_bounds: Bounds<Pixels>,
     pub(crate) visible: bool,
     pub(crate) focused: Option<bool>,
     pub(crate) focusable: bool,
@@ -74,6 +75,7 @@ impl Snapshot {
             min_numeric_value: node.min_numeric_value(),
             max_numeric_value: node.max_numeric_value(),
             bounds,
+            visible_bounds: Bounds::default(),
             // Set during paint; anything that is never painted stays hidden.
             visible: false,
             focused: None,
@@ -178,6 +180,12 @@ impl Snapshot {
     /// Window-local bounds from the last paint.
     pub fn bounds(&self) -> Bounds<Pixels> {
         self.bounds
+    }
+    /// The part of [`Self::bounds`] left after clipping by scroll containers,
+    /// `overflow_hidden` ancestors and the window. Empty when not visible.
+    /// Pointer interactions target its center.
+    pub fn visible_bounds(&self) -> Bounds<Pixels> {
+        self.visible_bounds
     }
     /// Painted with a non-empty, unclipped area, and no ancestor hid it.
     pub fn is_visible(&self) -> bool {

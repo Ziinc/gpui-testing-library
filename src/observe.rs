@@ -286,6 +286,11 @@ impl<E: Probe> Element for Testable<E> {
             let mut snapshot = prepaint.1.snapshot.borrow_mut();
             snapshot.visible =
                 styled_visible && clipped.size.width > px(0.) && clipped.size.height > px(0.);
+            snapshot.visible_bounds = if snapshot.visible {
+                clipped
+            } else {
+                Bounds::default()
+            };
             snapshot.focused = self
                 .focus
                 .as_ref()

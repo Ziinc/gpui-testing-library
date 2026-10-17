@@ -50,6 +50,12 @@ pub(crate) fn snapshots(window: &Window) -> Vec<Snapshot> {
                 min_numeric_value: None,
                 max_numeric_value: None,
                 bounds: kit.bounds(),
+                // Kit reports no clip; its visible elements are fully painted.
+                visible_bounds: if kit.visible() {
+                    kit.bounds()
+                } else {
+                    Bounds::default()
+                },
                 visible: kit.visible(),
                 focused: if binding_missed { None } else { kit.focused() },
                 focusable: debug.contains("focus_action: true"),

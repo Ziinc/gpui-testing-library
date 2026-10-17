@@ -121,3 +121,71 @@ impl From<regex::Regex> for TextMatch {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui::{Bounds, IntoElement as _, div, prelude::*};
+    use proptest::prelude::*;
+
+    fn snapshot() -> Snapshot {
+        Snapshot::capture(&div().id("x").into_element(), Vec::new(), Bounds::default())
+    }
+
+    #[test]
+    fn debug_names_each_matcher() {
+        assert_eq!(format!("{:?}", TextMatch::exact("a")), "\"a\"");
+        assert_eq!(
+            format!("{:?}", TextMatch::contains("a")),
+            "\"a\" (substring, ignoring case)"
+        );
+        assert_eq!(format!("{:?}", TextMatch::regex("^a$")), "/^a$/");
+        assert_eq!(
+            format!("{:?}", TextMatch::function(|_, _| true)),
+            "<function>"
+        );
+        assert_eq!(format!("{:?}", TextMatch::from(String::from("b"))), "\"b\"");
+        assert_eq!(
+            format!("{:?}", TextMatch::from(&String::from("c"))),
+            "\"c\""
+        );
+    }
+
+    #[test]
+    fn contains_lowercases_rather_than_case_folds() {
+        // Like JavaScript's toLowerCase, which Testing Library uses.
+        assert!(!TextMatch::contains("STRASSE").matches("Straße", &snapshot()));
+        assert!(TextMatch::contains("STRASSE").matches("Strasse", &snapshot()));
+    }
+
+    proptest! {
+        #[test]
+        fn normalize_is_idempotent(text in "\\PC*") {
+            let once = normalize(&text);
+            prop_assert_eq!(normalize(&once), once);
+        }
+
+        #[test]
+        fn exact_matches_text_up_to_whitespace(text in "\\PC*") {
+            prop_assert!(TextMatch::exact(normalize(&text)).matches(&text, &snapshot()));
+        }
+
+        #[test]
+        fn contains_finds_any_substring_in_any_case(
+            before in "\\PC{0,4}",
+            needle in "[^\\s]{0,4}",
+            after in "\\PC{0,4}",
+        ) {
+            // Lowercasing is not case folding: "ß" uppercases to "SS".
+            prop_assume!(needle.to_uppercase().to_lowercase() == needle.to_lowercase());
+            let text = format!("{before} {needle} {after}");
+            prop_assert!(TextMatch::contains(needle.to_uppercase()).matches(&text, &snapshot()));
+        }
+
+        #[test]
+        fn without_normalization_compares_raw_text(text in "\\PC*") {
+            let raw = TextMatch::exact(text.clone()).without_normalization();
+            prop_assert!(raw.matches(&text, &snapshot()));
+        }
+    }
+}
