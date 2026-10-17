@@ -3055,7 +3055,7 @@ checksum = "4b0d73e1bc02eef886a5947f41b8512708792e9e5d3053d181843311a487f96f"
 
 [[package]]
 name = "gpui-testing-library"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "gpui-kit",
  "gpui-pre",

@@ -243,5 +243,5 @@ cd compat && cargo test   # against gpui-proptest, gpui-visual-test, tauri-gpui
 ```
 
 To release, bump `version` in `Cargo.toml`, merge, then push a matching tag
-(`git tag v0.1.0 && git push origin v0.1.0`). The Release workflow publishes
+(`git tag v0.1.1 && git push origin v0.1.1`). The Release workflow publishes
 to crates.io with the `CARGO_REGISTRY_TOKEN` secret.
