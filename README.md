@@ -167,8 +167,7 @@ screen.rerender(|root, _, cx| {
 expect(screen.get_by_text("Count: 1")).to_be_visible();
 ```
 
-`disabled` buttons ignore clicks but are not reported as disabled, since
-baguette renders plain divs (see Limitations). `baguette_view` is not on
+`disabled` elements ignore clicks and read as disabled. `baguette_view` is not on
 crates.io yet; depend on it from git with `features = ["test-support"]`.
 
 ## API

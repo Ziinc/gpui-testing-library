@@ -604,7 +604,7 @@ dependencies = [
 [[package]]
 name = "baguette_view"
 version = "0.1.0"
-source = "git+https://github.com/Ziinc/baguette?rev=2a2bf97#2a2bf97cd640389680f7382a4ac79423e91b3874"
+source = "git+https://github.com/Ziinc/baguette?rev=174fce2#174fce2515fe246688749d9c4ec56557a354fc5c"
 dependencies = [
  "gpui-base",
  "gpui-pre",

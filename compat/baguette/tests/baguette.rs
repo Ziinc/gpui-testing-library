@@ -49,8 +49,8 @@ fn elixir_trees_are_queryable(cx: &mut TestAppContext) {
     // A button without `aria-label` is named by its text.
     let plus = screen.get_by_role(by::role(Role::Button).name("+"));
     let reset = screen.get_by_role(by::role(Role::Button).name("Reset"));
-    // `disabled` stops clicks but is not reported: baguette renders plain
-    // divs, and GPUI's div has no AccessKit disabled setter.
+    expect(&plus).to_be_enabled();
+    expect(&reset).to_be_disabled();
     screen.user().click(&reset);
     screen.user().click(&plus);
     assert_eq!(*events.borrow(), [inc()]);
