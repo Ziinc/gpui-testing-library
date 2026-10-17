@@ -1,6 +1,6 @@
 [package]
 name = "gpui-testing-library"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Testing Library for GPUI: query views the way users perceive them, simulate user events, and assert with jest-dom style matchers."
 license = "MIT"
