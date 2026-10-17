@@ -144,10 +144,32 @@ its `main` branch onward.
 
 ### baguette
 
-Baguette renders Elixir trees with gpui-base's `.test_support()` when built
-with its `playwright` feature, and this crate reads those with its `gpui-kit`
-feature. Rendering a tree from a test also needs baguette to export its
-renderer, which is in progress in the baguette repository.
+Baguette's `baguette_view` crate renders the trees `Baguette.View` sends,
+without the host or the BEAM. With its `test-support` feature every element
+is registered with gpui-base's `.test_support()`, which this crate reads with
+its `gpui-kit` feature. Buttons are named by `aria-label` or their text, and
+`<text>` is a `Role::Label` whose text is its value. Play the server in the
+test: collect the events `Root` raises, then `set_frame` the next tree.
+
+```rust
+let events = Rc::new(RefCell::new(Vec::new()));
+let sink = events.clone();
+let frame: baguette_view::Frame = serde_json::from_str(json)?;
+let screen = render(cx, move |_, _| {
+    baguette_view::Root::new(0, move |event| sink.borrow_mut().push(event))
+        .with_frame(frame)
+});
+screen.user().click(&screen.get_by_role(by::role(Role::Button).name("+")));
+screen.rerender(|root, _, cx| {
+    root.set_frame(next_frame);
+    cx.notify();
+});
+expect(screen.get_by_text("Count: 1")).to_be_visible();
+```
+
+`disabled` buttons ignore clicks but are not reported as disabled, since
+baguette renders plain divs (see Limitations). `baguette_view` is not on
+crates.io yet; depend on it from git with `features = ["test-support"]`.
 
 ## API
 
@@ -239,5 +261,5 @@ cargo test --all-features
 PROPTEST_CASES=500 cargo test --all-features --test chaos  # longer chaos run
 cargo clippy --all-features --all-targets -- --deny warnings
 cargo fmt --check
-cd compat && cargo test   # against gpui-proptest, gpui-visual-test, tauri-gpui
+cd compat && cargo test   # against gpui-proptest, gpui-visual-test, tauri-gpui, baguette
 ```
